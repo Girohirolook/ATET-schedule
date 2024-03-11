@@ -12,3 +12,7 @@ class DateCallback(CallbackData, prefix="date"):
 class ReturnCallback(CallbackData, prefix="return"):
     to: str
     n: int
+
+
+class SubscribeCallback(CallbackData, prefix="subscribe"):
+    now: int

@@ -3,6 +3,7 @@ import datetime
 from os import listdir
 import re
 
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import FSInputFile
 from bs4 import BeautifulSoup as bs
@@ -17,6 +18,17 @@ day_of_week = {
     3: "четверг",
     4: "пятницу",
 }
+
+
+def read_ids():
+    with open("files/ids.txt") as f:
+        data = [i.split() for i in f.read().split("\n")]
+    return data
+
+
+def write_ids(ids):
+    with open("files/ids.txt", mode="w") as f:
+        f.write("\n".join([" ".join(i) for i in ids]))
 
 
 def get_href(date_str):
@@ -67,19 +79,26 @@ async def send_news_messages(date_str):
 
     date = date_str_to_date(date_str)
     keyboard = keyboards.get_news_keyboard(date_str)
-    with open("files/ids.txt", mode="r") as f:
-        for i in f.read().split(","):
+    ids = []
+    for i in read_ids():
+        if int(i[1]):
             try:
                 await bot.send_message(
-                    int(i),
+                    int(i[0]),
                     text=(
                         f"Вышло расписание на <b>"
                         f"{day_of_week[date.weekday()]}</b> ({date_str})"
                     ),
                     reply_markup=keyboard,
                 )
-            except TelegramForbiddenError:
+                ids.append(i)
+            except (TelegramForbiddenError, TelegramBadRequest):
                 pass
+        else:
+            ids.append(i)
+    write_ids(ids)
+    # with open("files/ids.txt", mode="w") as f:
+    #     f.write(",".join(ids))
 
 
 async def update_dates():
@@ -108,11 +127,6 @@ def get_file_by_date(date):
         date_str = date
     else:
         date_str = get_date_text(date)
-    # if f"{date_str}.pdf" not in listdir("files"):
-    #     href = get_href(date_str)
-    #     r = requests.get(f"https://edu.tatar.ru{href}")
-    #     with open(f"files/{date_str}.pdf", "wb") as f:
-    #         f.write(r.content)
     if f"{date_str}.pdf" in listdir("files"):
         return FSInputFile(f"files/{date_str}.pdf")
     return None

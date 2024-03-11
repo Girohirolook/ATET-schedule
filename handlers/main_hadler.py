@@ -3,27 +3,18 @@ import datetime
 from aiogram import F
 from aiogram import Router
 from aiogram.types import CallbackQuery
+from aiogram.types import FSInputFile
 from aiogram.types import Message
 
+from middlewares.messages_counter import return_message_count
 from utils import callbacks
 from utils import keyboards
 from utils.filters import AdminFilter
 from utils.funcs import check_file_exists
 from utils.funcs import get_date_text
 from utils.funcs import get_file_by_date
-
-last_date = datetime.date.today()
-messages_count = 0
-
-
-def count_message():
-    global last_date, messages_count
-    date = datetime.date.today()
-    if date != last_date:
-        last_date = date
-        messages_count = 0
-        print(1)
-    messages_count += 1
+from utils.funcs import read_ids
+from utils.funcs import write_ids
 
 
 router = Router()
@@ -31,9 +22,51 @@ router = Router()
 
 @router.message(F.text == "Посмотреть расписание")
 async def main_table(message: Message):
-    count_message()
     return await message.answer(
         "Выберите день недели", reply_markup=keyboards.date_k
+    )
+
+
+@router.message(F.text == "Рассылка")
+async def distribution_subscribe(message: Message):
+    ids = read_ids()
+    for i in ids:
+        if int(i[0]) == message.from_user.id:
+            keyboard = keyboards.get_subscribe_keyboard(int(i[1]))
+            break
+    if int(i[1]):
+        text = "✅ Рассылка подключена"
+    else:
+        text = "❌ Рассылка отключена"
+    photo = FSInputFile("files/subscribe.png")
+    return await message.answer_photo(
+        photo,
+        "При выходе нового расписания данный бот отправляет рассылку.\n"
+        + text,
+        reply_markup=keyboard,
+    )
+
+
+@router.callback_query(callbacks.SubscribeCallback.filter(F.now > -1))
+async def change_subscribe(
+    callback_query: CallbackQuery, callback_data: callbacks.SubscribeCallback
+):
+    ids = read_ids()
+    for i in ids:
+        if int(i[0]) == callback_query.from_user.id:
+            i[1] = str((int(i[1]) + 1) % 2)
+            break
+    write_ids(ids)
+    if int(i[1]):
+        text = "✅ Рассылка подключена"
+    else:
+        text = "❌ Рассылка отключена"
+    keyboard = keyboards.get_subscribe_keyboard(int(i[1]))
+    await callback_query.message.edit_caption(
+        inline_message_id=callback_query.inline_message_id,
+        caption="При выходе нового расписания данный бот отправляет рассылку\n"
+        + text,
+        reply_markup=keyboard,
     )
 
 
@@ -41,7 +74,6 @@ async def main_table(message: Message):
 async def week(
     callback_query: CallbackQuery, callback_data: callbacks.WeekendCallback
 ):
-    count_message()
     today = datetime.date.today()
     dates = []
     for i in range(-7 - today.weekday(), 8):
@@ -61,7 +93,6 @@ async def week(
 async def date(
     callback_query: CallbackQuery, callback_data: callbacks.DateCallback
 ):
-    count_message()
     file = get_file_by_date(callback_data.date)
     keyboard = keyboards.get_return_keyboard(callback_data.date)
     await callback_query.message.answer_document(file, reply_markup=keyboard)
@@ -88,7 +119,6 @@ async def return_to_dates(
 
 @router.callback_query(F.data == "tomorrow")
 async def tomorrow(callback_query: CallbackQuery):
-    count_message()
     date = datetime.date.today() + datetime.timedelta(days=1)
     file = get_file_by_date(date)
     if file:
@@ -110,16 +140,24 @@ async def tomorrow(callback_query: CallbackQuery):
 
 @router.message(AdminFilter("Посмотреть колво пользователей"))
 async def users(message: Message):
-    count_message()
-    with open("files/ids.txt", mode="r") as f:
-        ids_count = len(f.read().split(","))
+    ids_count = len(read_ids)
     return message.answer(f"Кол-во пользователей: <b>{ids_count}</b>")
 
 
 @router.message(AdminFilter("Колво сообщений за день"))
 async def messages_for_day(message: Message):
-    global messages_count
-    return message.answer(f"Кол-во сообщений за день: <b>{messages_count}</b>")
+    return message.answer(
+        f"Кол-во сообщений за день: <b>{return_message_count()}</b>"
+    )
+
+
+@router.message(AdminFilter("Рассылка: "))
+async def distribution(message: Message):
+    from main import bot
+
+    text = message.text.split(": ")[1]
+    for i in read_ids():
+        await bot.send_message(int(i[0]), text, reply_markup=keyboards.main_k)
 
 
 @router.message()
@@ -132,12 +170,6 @@ async def main_start(message: Message):
             ),
             reply_markup=keyboards.main_admin_k,
         )
-    with open("files/ids.txt", mode="r") as f:
-        data = f.read().split(",")
-        if str(message.from_user.id) not in data:
-            data.append(str(message.from_user.id))
-            with open("files/ids.txt", mode="w") as f2:
-                f2.write(",".join(data))
     return await message.answer(
         (
             "Этот бот предназначен для просмотра расписания АТЭТ. "

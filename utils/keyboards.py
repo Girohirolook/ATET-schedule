@@ -9,6 +9,7 @@ from utils.funcs import get_weekday_form_date_str
 main_k = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Посмотреть расписание")],
+        [KeyboardButton(text="Рассылка")],
     ],
     resize_keyboard=True,
 )
@@ -17,6 +18,7 @@ main_k = ReplyKeyboardMarkup(
 main_admin_k = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Посмотреть расписание")],
+        [KeyboardButton(text="Рассылка")],
         [
             KeyboardButton(text="Посмотреть колво пользователей"),
             KeyboardButton(text="Колво сообщений за день"),
@@ -125,3 +127,21 @@ main_return_k = InlineKeyboardMarkup(
         ]
     ]
 )
+
+
+def get_subscribe_keyboard(now: int = 1):
+    if now:
+        text = "Отменить подписку"
+    else:
+        text = "Подписаться на рассылку"
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=text,
+                    callback_data=callbacks.SubscribeCallback(now=now).pack(),
+                )
+            ],
+        ],
+    )
+    return keyboard

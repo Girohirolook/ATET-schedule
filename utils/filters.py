@@ -8,5 +8,5 @@ class AdminFilter(Filter):
 
     async def __call__(self, message: Message) -> bool:
         return (
-            message.from_user.id == 1047809355 and self.my_text == message.text
+            message.from_user.id == 1047809355 and self.my_text in message.text
         )
