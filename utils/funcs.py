@@ -1,6 +1,6 @@
 import asyncio
 import datetime
-from os import listdir
+from os import listdir, remove
 import re
 
 from aiogram.exceptions import TelegramBadRequest
@@ -18,6 +18,9 @@ day_of_week = {
     3: "четверг",
     4: "пятницу",
 }
+
+new_regex = r"\d{1,2}\_\d{1,2}\_\d{2,4}"
+edit_regex = r"\d{1,2}\_\d{1,2}\_\d{2,4}\(+\d{1,3}\)+"
 
 
 def read_ids():
@@ -70,6 +73,8 @@ def get_date_text(date):
 
 
 def date_str_to_date(date_str: str):
+    if re.match(edit_regex.replace("_", "."), date_str):
+        date_str = date_str[:-3]
     date_str = date_str.split(".")
     return datetime.date(int(date_str[2]), int(date_str[1]), int(date_str[0]))
 
@@ -97,27 +102,45 @@ async def send_news_messages(date_str):
         else:
             ids.append(i)
     write_ids(ids)
-    # with open("files/ids.txt", mode="w") as f:
-    #     f.write(",".join(ids))
+
+
+async def edit_file(name, href):
+    date_str = get_date_text(name.replace("_", "."))
+    files = listdir("files")
+    just_date = date_str[:-3]
+    if check_file_exists(just_date):
+        for file in files:
+            if re.match(just_date, file) and f"{date_str}.pdf" != file:
+                remove(f"files/{file}")
+                r = requests.get(f"https://edu.tatar.ru{href}")
+                with open(f"files/{date_str}.pdf", "wb") as f:
+                    f.write(r.content)
+    else:
+        r = requests.get(f"https://edu.tatar.ru{href}")
+        with open(f"files/{date_str}.pdf", "wb") as f:
+            f.write(r.content)
+        await send_news_messages(date_str)
 
 
 async def update_dates():
-    regex = r"\d{1,2}\_\d{1,2}\_\d{2,4}"
-
     while True:
         files = listdir("files")
         hrefs = get_all_a()
         for href in hrefs:
-            reg = re.search(regex, href)
+            reg = re.search(edit_regex, href)
             if reg:
-                date_str = get_date_text(reg.group().replace("_", "."))
-                if f"{date_str}.pdf" not in files:
-                    r = requests.get(f"https://edu.tatar.ru{href}")
-                    with open(f"files/{date_str}.pdf", "wb") as f:
-                        f.write(r.content)
-                    await send_news_messages(date_str)
+                await edit_file(reg.group(), href)
             else:
-                print("regex dont find date, FINDERROR")
+                reg = re.search(new_regex, href)
+                if reg:
+                    date_str = get_date_text(reg.group().replace("_", "."))
+                    if f"{date_str}.pdf" not in files:
+                        r = requests.get(f"https://edu.tatar.ru{href}")
+                        with open(f"files/{date_str}.pdf", "wb") as f:
+                            f.write(r.content)
+                        await send_news_messages(date_str)
+                else:
+                    print("regex dont find date, FINDERROR")
         print(datetime.datetime.now())
         await asyncio.sleep(600)
 
@@ -127,8 +150,20 @@ def get_file_by_date(date):
         date_str = date
     else:
         date_str = get_date_text(date)
-    if f"{date_str}.pdf" in listdir("files"):
-        return FSInputFile(f"files/{date_str}.pdf")
+    for file in listdir("files"):
+        if re.match(re.escape(date_str), file):
+            return FSInputFile(f"files/{file}")
+    return None
+
+
+def get_file_name_by_date(date):
+    if isinstance(date, str):
+        date_str = date
+    else:
+        date_str = get_date_text(date)
+    for file in listdir("files"):
+        if re.match(date_str, file):
+            return file
     return None
 
 
@@ -137,9 +172,13 @@ def check_file_exists(date):
         date_str = date
     else:
         date_str = get_date_text(date)
-    if f"{date_str}.pdf" in listdir("files"):
-        return True
+    for i in listdir("files"):
+        if re.match(date_str, i):
+            return True
     return False
+    # if f"{date_str}.pdf" in listdir("files"):
+    # return True
+    # return False
 
 
 def get_weekday_form_date_str(date_str: str):

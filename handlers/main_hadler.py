@@ -10,7 +10,7 @@ from middlewares.messages_counter import return_message_count
 from utils import callbacks
 from utils import keyboards
 from utils.filters import AdminFilter
-from utils.funcs import check_file_exists
+from utils.funcs import check_file_exists, get_file_name_by_date
 from utils.funcs import get_date_text
 from utils.funcs import get_file_by_date
 from utils.funcs import read_ids
@@ -81,7 +81,8 @@ async def week(
         if some_date.weekday() == callback_data.n and check_file_exists(
             some_date
         ):
-            dates.append(get_date_text(some_date))
+            file_date = get_file_name_by_date(some_date)
+            dates.append(get_date_text(file_date))
     keyboard = keyboards.get_dates_keyboard(dates)
     await callback_query.message.answer(
         "Выберите дату:", reply_markup=keyboard
@@ -140,7 +141,7 @@ async def tomorrow(callback_query: CallbackQuery):
 
 @router.message(AdminFilter("Посмотреть колво пользователей"))
 async def users(message: Message):
-    ids_count = len(read_ids)
+    ids_count = len(read_ids())
     return message.answer(f"Кол-во пользователей: <b>{ids_count}</b>")
 
 
