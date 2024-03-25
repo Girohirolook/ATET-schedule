@@ -8,7 +8,7 @@ from utils.funcs import get_weekday_form_date_str
 
 main_k = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Посмотреть расписание")],
+        [KeyboardButton(text="Расписание"), KeyboardButton(text="Меню в столовой")],
         [KeyboardButton(text="Рассылка")],
     ],
     resize_keyboard=True,
@@ -17,7 +17,7 @@ main_k = ReplyKeyboardMarkup(
 
 main_admin_k = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="Посмотреть расписание")],
+        [KeyboardButton(text="Расписание"), KeyboardButton(text="Меню в столовой")],
         [KeyboardButton(text="Рассылка")],
         [
             KeyboardButton(text="Посмотреть колво пользователей"),

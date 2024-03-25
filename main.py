@@ -9,7 +9,7 @@ from aiogram import Dispatcher
 from handlers import main_hadler
 from middlewares.authorization import AuthorizationMiddleware
 from middlewares.messages_counter import MessageCounter
-from utils.funcs import update_dates
+from utils.funcs import update_dates, update_menu
 
 bot = Bot(token=os.getenv("TOKEN"), parse_mode="HTML")
 
@@ -30,6 +30,7 @@ if __name__ == "__main__":
         loop = asyncio.get_event_loop()
         coros = []
         coros.append(update_dates())
+        coros.append(update_menu())
         coros.append(main())
         loop.run_until_complete(asyncio.gather(*coros))
         # asyncio.run(update_dates())

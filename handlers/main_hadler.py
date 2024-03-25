@@ -15,16 +15,27 @@ from utils.funcs import get_date_text
 from utils.funcs import get_file_by_date
 from utils.funcs import read_ids
 from utils.funcs import write_ids
-
+from utils.funcs import get_cafe_menu
 
 router = Router()
 
 
-@router.message(F.text == "Посмотреть расписание")
+@router.message(F.text == "Расписание")
 async def main_table(message: Message):
     return await message.answer(
         "Выберите день недели", reply_markup=keyboards.date_k
     )
+
+
+@router.message(F.text == "Меню в столовой")
+async def cafe_handler(message: Message):
+    file = get_cafe_menu()
+    if file:
+        await message.answer("Меню на сегодня:")
+        await message.answer_document(file)
+    else:
+        await message.answer("На сегодня нет меню, пока что")
+
 
 
 @router.message(F.text == "Рассылка")
@@ -158,7 +169,8 @@ async def distribution(message: Message):
 
     text = message.text.split(": ")[1]
     for i in read_ids():
-        await bot.send_message(int(i[0]), text, reply_markup=keyboards.main_k)
+        if int(i[1]):
+            await bot.send_message(int(i[0]), text, reply_markup=keyboards.main_k)
 
 
 @router.message()

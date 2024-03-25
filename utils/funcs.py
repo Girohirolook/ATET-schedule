@@ -9,7 +9,6 @@ from aiogram.types import FSInputFile
 from bs4 import BeautifulSoup as bs
 import requests
 
-from utils import keyboards
 
 day_of_week = {
     0: "понедельник",
@@ -65,6 +64,23 @@ def get_all_a():
     return hrefs
 
 
+def menu_a():
+    data = requests.get("https://edu.tatar.ru/almet/page2042051.htm/page5037018.htm")
+    soup = bs(data.content, features="html.parser")
+    divs = soup.find_all("div", class_="custom_wysiwyg")
+    for div in divs:
+        if div.find("div"):
+            continue
+        p_tags = div.find_all("p")
+        if p_tags:
+            for p in p_tags:
+                a_tags = p.find_all("a")
+                if a_tags:
+                    for a in a_tags:
+                        href = (a.get("href"), a.text)
+    return href
+
+
 def get_date_text(date):
     if isinstance(date, str):
         date = date.split(".")
@@ -80,6 +96,7 @@ def date_str_to_date(date_str: str):
 
 
 async def send_news_messages(date_str):
+    from utils import keyboards
     from main import bot
 
     date = date_str_to_date(date_str)
@@ -145,6 +162,18 @@ async def update_dates():
         await asyncio.sleep(600)
 
 
+async def update_menu():
+    while True:
+        href = menu_a()
+        regex = re.findall(r"\d{1,2}\.\d{1,2}\.\d{2,4}", href[1])
+        text = regex[0]
+        if f"{text}m.jpg" not in listdir("files"):
+            r = requests.get(f"https://edu.tatar.ru{href[0]}")
+            with open(f"files/{text}m.jpg", mode="wb") as f:
+                f.write(r.content)
+        await asyncio.sleep(600)
+            
+
 def get_file_by_date(date):
     if isinstance(date, str):
         date_str = date
@@ -164,6 +193,15 @@ def get_file_name_by_date(date):
     for file in listdir("files"):
         if re.match(date_str, file):
             return file
+    return None
+
+
+def get_cafe_menu():
+    date = datetime.date.today()
+    date_str = get_date_text(date)
+    if f"{date_str}m.jpg" in listdir("files"):
+        file = FSInputFile(f"files/{date_str}m.jpg")
+        return file
     return None
 
 
