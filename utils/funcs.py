@@ -191,7 +191,7 @@ def get_file_name_by_date(date):
     else:
         date_str = get_date_text(date)
     for file in listdir("files"):
-        if re.match(date_str, file):
+        if re.match(date_str, file) and "m" not in file:
             return file
     return None
 
